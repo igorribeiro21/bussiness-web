@@ -32,7 +32,8 @@ const styles = {
         flexDirection: 'column'
     },
     textFieldCreateCompany: {
-        margin: 10
+        margin: 10,
+        width: 300
     }
 };
 
@@ -43,7 +44,16 @@ function Company() {
     const [openDialogCreate, setOpenDialogCreate] = useState(false);
     const [companyDialog, setCompanyDialog] = useState({});
     const [disableEdit, setDisableEdit] = useState(true);
-    const [cepCreate, setCepCreate] = useState('');
+    const [name, setName] = useState('');
+    const [number, setNumber] = useState('');
+    const [zipcode, setZipcode] = useState('');
+    const [street, setStreet] = useState('');
+    const [neighborhood, setNeighborhood] = useState('');
+    const [city, setCity] = useState('');
+    const [state, setState] = useState('');
+    const [telephone, setTelephone] = useState('');
+    const [complement, setComplement] = useState('');
+    const [editDialog, setEditDialog] = useState(false);
 
     useEffect(() => {
         async function getCompanies() {
@@ -57,10 +67,10 @@ function Company() {
     }, []);
 
     useEffect(() => {
-        if(cepCreate.length === 8) {
+        if (zipcode.length === 8) {
             getAddressCep();
         }
-    },[cepCreate])
+    }, [zipcode])
 
     function onCloseDialog() {
         setOpenDialog(false);
@@ -70,6 +80,17 @@ function Company() {
     }
     function onCloseDialogCreate() {
         setOpenDialogCreate(false);
+    }
+
+    function clearDialog() {
+        setName('');
+        setStreet('');
+        setNumber('');
+        setNeighborhood('');
+        setState('');
+        setCity('');
+        setTelephone('');
+        setComplement('');
     }
 
     const formatTelephone = (v) => {
@@ -92,10 +113,58 @@ function Company() {
         }
     }
 
+    async function createCompany() {
+        const obj = {};
+        Object.assign(obj, {
+            name: name ? name : '',
+            address: street && number && neighborhood && city && state && zipcode
+                ? `${street} , ${number} ${complement && complement} ${neighborhood} , ${city}-${state} ${zipcode}` : '',
+            telephone: telephone ? telephone.replace('(', '').replace(')', '').replace('-', '').replace(' ', '') : ''
+        });
+
+        if (!obj.name) {
+            alert('Favor preencher o nome da empresa');
+            return;
+        }
+
+        if (!obj.address) {
+            alert('Favor preencher todos os campos do endereço da empresa');
+            return;
+        }
+
+        if (!obj.telephone) {
+            alert('Favor preencher o telefone da empresa');
+            return;
+        }
+
+        const response = await api.post('/Companies', obj);
+
+        if (response.data.success) {
+            alert('Empresa criada com sucesso!');
+            clearDialog();
+            setDisableEdit(true);
+
+            const responseCompanies = await api.get('/Companies');
+
+            if (responseCompanies.data.success) {
+                setListCompanies(responseCompanies.data.data);
+                setOpenDialogCreate(false);
+            }
+        }
+    }
+
     async function getAddressCep() {
-        const response = await api.get(`/Zipcode/${cepCreate}`);
-        if(response.data) {
-            console.log(response.data);
+        const response = await api.get(`/Zipcode/${zipcode}`);
+        if (response.data) {
+            setStreet(response.data.logradouro);
+            setNeighborhood(response.data.bairro);
+            setCity(response.data.localidade);
+            setState(response.data.uf);
+
+            if (response.data.complemento)
+                setComplement(response.data.complemento);
+
+            setDisableEdit(false);
         }
     }
 
@@ -152,21 +221,43 @@ function Company() {
 
             <Dialog open={openDialog} onClose={onCloseDialog}>
                 <DialogContent>
-                    <h1>{companyDialog ? companyDialog.name : ''}</h1>
 
-                    <TextField
-                        required
-                        id="outlined-required"
-                        label="Endereço"
-                        defaultValue={companyDialog && companyDialog.address}
-                    />
+                    {
+                        !editDialog ? (
+                            <div style={{
+                                display: 'flex',
+                                flexDirection: 'column'
+                            }}>
+                                <h1>{companyDialog ? companyDialog.name : ''}</h1>
 
-                    <TextField
-                        required
-                        id="outlined-required"
-                        label="Telefone"
-                        defaultValue={companyDialog && companyDialog.telephone ? formatTelephone(companyDialog.telephone) : ''}
-                    />
+                                <span><strong>Cep:</strong>{zipcode}</span>
+                                <span><strong>Telefone:</strong>{formatTelephone(telephone)}</span>
+                                <span><strong>Rua:</strong>{street}</span>
+                                <span><strong>Número:</strong>{number}</span>
+                                <span><strong>Bairro:</strong>{neighborhood}</span>
+                                <span><strong>Complemento:</strong>{complement}</span>
+                                <span><strong>Cidade:</strong>{city}</span>
+                                <span><strong>Estado:</strong>{state}</span>
+                            </div>
+                        ) : (
+                            <div>
+                                <TextField
+                                    required
+                                    id="outlined-required"
+                                    label="Endereço"
+                                    defaultValue={companyDialog && companyDialog.address}
+                                />
+
+                                <TextField
+                                    required
+                                    id="outlined-required"
+                                    label="Telefone"
+                                    defaultValue={companyDialog && companyDialog.telephone ? formatTelephone(companyDialog.telephone) : ''}
+                                />
+                            </div>
+                        )
+                    }
+
                 </DialogContent>
             </Dialog>
 
@@ -189,12 +280,18 @@ function Company() {
                 fullWidth={true}
             >
                 <div>
-                    <div>
+                    <h1 style={{ margin: 10 }}>Criar Empresa</h1>
+                    <div style={{
+                        display: 'flex',
+                        flexDirection: 'row'
+                    }}>
                         <TextField
                             style={styles.textFieldCreateCompany}
                             required
                             id="outlined-required"
                             label="Nome"
+                            value={name}
+                            onChange={e => setName(e.target.value)}
                         />
 
                         <TextField
@@ -203,9 +300,25 @@ function Company() {
                             id="outlined-required"
                             label="Cep"
                             onChange={e => {
-                                setCepCreate(e.target.value)                               
+                                setZipcode(e.target.value)
                             }}
+                            value={zipcode}
                         />
+
+                        <TextField
+                            style={styles.textFieldCreateCompany}
+                            required
+                            id="outlined-required"
+                            label="Telefone"
+                            value={telephone}
+                            onChange={e => setTelephone(formatTelephone(e.target.value))}
+                        />
+
+                    </div>
+
+                    <div>
+
+
 
                         <TextField
                             style={styles.textFieldCreateCompany}
@@ -213,15 +326,15 @@ function Company() {
                             id="outlined-required"
                             label="Rua"
                             disabled={disableEdit}
+                            value={street}
+                            onChange={e => setStreet(e.target.value)}
                         />
-                    </div>
-
-                    <div>
                         <TextField
                             style={styles.textFieldCreateCompany}
                             required
                             id="outlined-required"
                             label="Número"
+                            onChange={e => setNumber(e.target.value)}
                         />
 
                         <TextField
@@ -230,6 +343,17 @@ function Company() {
                             id="outlined-required"
                             label="Bairro"
                             disabled={disableEdit}
+                            value={neighborhood}
+                            onChange={e => setNeighborhood(e.target.value)}
+                        />
+
+                        <TextField
+                            style={styles.textFieldCreateCompany}
+                            id="outlined-required"
+                            label="Complemento"
+                            disabled={disableEdit}
+                            value={complement}
+                            onChange={e => setComplement(e.target.value)}
                         />
 
                         <TextField
@@ -238,6 +362,8 @@ function Company() {
                             id="outlined-required"
                             label="Cidade"
                             disabled={disableEdit}
+                            value={city}
+                            onChange={e => setCity(e.target.value)}
                         />
 
                         <TextField
@@ -246,12 +372,28 @@ function Company() {
                             id="outlined-required"
                             label="Estado"
                             disabled={disableEdit}
+                            value={state}
+                            onChange={e => setState(e.target.value)}
                         />
+
                     </div>
+                    <Button
+                        style={{
+                            background: '#06b2f7',
+                            height: 50,
+                            width: 200,
+                            color: '#fff',
+                            margin: 15,
+                            float: 'right',
+                            marginRight: 250
+                        }}
+                        onClick={() => createCompany()}
+                    >Criar</Button>
+
                 </div>
 
             </Dialog>
-        </Container>
+        </Container >
     )
 }
 
