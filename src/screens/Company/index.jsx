@@ -12,7 +12,8 @@ import {
     Dialog,
     DialogContent,
     TextField,
-    Button
+    Button,
+    Autocomplete
 } from '@mui/material';
 import {
     Visibility,
@@ -20,6 +21,7 @@ import {
     AddCircle,
     Edit
 } from '@mui/icons-material';
+import {NumericFormat} from 'react-number-format';
 
 const styles = {
     tableHead: {
@@ -43,6 +45,7 @@ function Company() {
     const [openDialog, setOpenDialog] = useState(false);
     const [openDialogExclude, setOpenDialogExclude] = useState(false);
     const [openDialogCreate, setOpenDialogCreate] = useState(false);
+    const [openDialogCreateEmployee, setOpenDialogCreateEmployee] = useState(false);
     const [companyDialog, setCompanyDialog] = useState({});
     const [disableEdit, setDisableEdit] = useState(true);
     const [id, setId] = useState('');
@@ -55,9 +58,14 @@ function Company() {
     const [state, setState] = useState('');
     const [telephone, setTelephone] = useState('');
     const [complement, setComplement] = useState('');
-    const [employees, setEmployees] = useState([]);
+    const [jobTitles, setJobTitles] = useState([]);
     const [editDialog, setEditDialog] = useState(false);
-
+    const [employees, setEmployees] = useState([]);
+    const [nameEmployee, setNameEmployee] = useState('');
+    const [idJobTitleEmployee, setIdJobTitleEmployee] = useState('');
+    const [salaryEmployee, setSalaryEmployee] = useState('');
+    const [idEmployee, setIdEmployee] = useState('');
+    const [jobTitleEmployee, setJobTitleEmployee] = useState({});
     useEffect(() => {
         async function getCompanies() {
             const response = await api.get('/Companies');
@@ -67,10 +75,27 @@ function Company() {
             }
         }
         getCompanies();
+
+        async function getJobTitles() {
+            const response = await api.get('/JobTitles');
+
+            if (response.data.success) {
+                let list = [];
+
+                await response.data.data.map(job => {
+                    list.push({
+                        label: job.name,
+                        id: job.id
+                    });
+                });
+
+                setJobTitles(list);
+            }
+        }
+        getJobTitles();
     }, []);
 
     useEffect(() => {
-        console.log('zipcode', zipcode.length)
         if (zipcode.length === 8) {
             getAddressCep();
         }
@@ -99,6 +124,14 @@ function Company() {
         setId('');
     }
 
+    function clearEmployee() {
+        setIdEmployee('');
+        setNameEmployee('');
+        setIdJobTitleEmployee('');
+        setSalaryEmployee('');
+        setJobTitleEmployee({});
+    }
+
     const formatTelephone = (v) => {
         v = v.replace(/\D/g, '');
         v = v.replace(/^(\d{2})(\d)/g, '($1) $2');
@@ -121,12 +154,6 @@ function Company() {
 
     async function createCompany() {
         const obj = {};
-        Object.assign(obj, {
-            name: name ? name : '',
-            address: street && number && neighborhood && city && state && zipcode
-                ? `${street} , ${number} ${complement && complement} ${neighborhood} , ${city}-${state} ${zipcode}` : '',
-            telephone: telephone ? telephone.replace('(', '').replace(')', '').replace('-', '').replace(' ', '') : ''
-        });
 
         if (!name) {
             alert('Favor preencher o nome da empresa');
@@ -160,10 +187,23 @@ function Company() {
             return;
         }
 
-        if (!obj.telephone) {
+        if (!telephone) {
             alert('Favor preencher o telefone da empresa');
             return;
         }
+
+        Object.assign(obj, {
+            name: name ? name : '',
+            zipcode: zipcode ? zipcode : '',
+            street: street ? street : '',
+            number: number ? number : '',
+            complement: complement ? complement : '',
+            neighborhood: neighborhood ? neighborhood : '',
+            city: city ? city : '',
+            state: state ? state : '',
+            telephone: telephone ? telephone.replace('(', '').replace(')', '').replace('-', '').replace(' ', '') : '',
+
+        });
 
         const response = await api.post('/Companies', obj);
 
@@ -181,10 +221,130 @@ function Company() {
         }
     }
 
+    async function updateCompany() {
+        const obj = {};
+        if (!name) {
+            alert('Favor preencher o nome da empresa');
+            return;
+        }
+
+        if (!street) {
+            alert('Favor preencher todos os campo rua da empresa');
+            return;
+        }
+        if (!zipcode) {
+            alert('Favor preencher todos os campo cep da empresa');
+            return;
+        }
+        if (!number) {
+            alert('Favor preencher todos os campo rua da empresa');
+            return;
+        }
+        if (!neighborhood) {
+            alert('Favor preencher todos os campo bairro da empresa');
+            return;
+        }
+
+        if (!city) {
+            alert('Favor preencher todos os campo cidade da empresa');
+            return;
+        }
+
+        if (!state) {
+            alert('Favor preencher todos os campo estado da empresa');
+            return;
+        }
+
+        if (!telephone) {
+            alert('Favor preencher o telefone da empresa');
+            return;
+        }
+
+        Object.assign(obj, {
+            name: name ? name : '',
+            zipcode: zipcode ? zipcode : '',
+            street: street ? street : '',
+            number: number ? number : '',
+            complement: complement ? complement : '',
+            neighborhood: neighborhood ? neighborhood : '',
+            city: city ? city : '',
+            state: state ? state : '',
+            telephone: telephone ? telephone.replace('(', '').replace(')', '').replace('-', '').replace(' ', '') : '',
+        });
+
+        const response = await api.put(`/Companies/${id}`, obj);
+
+        if (response.data.success) {
+            alert('Empresa atualizada com sucesso!');
+            clearDialog();
+            setDisableEdit(true);
+
+            const responseCompanies = await api.get('/Companies');
+
+            if (responseCompanies.data.success) {
+                setListCompanies(responseCompanies.data.data);
+                setOpenDialog(false);
+            }
+        }
+    }
+
+    async function createEmployee() {
+        const obj = {};
+
+        if (!nameEmployee) {
+            alert('Favor preencher o nome do funcionário');
+            return;
+        }
+
+        if (!idJobTitleEmployee) {
+            alert('Favor selecionar o cargo do funcionário');
+            return;
+        }
+
+        if (!salaryEmployee) {
+            alert('Favor preencher o salário do funcionário');
+            return;
+        }
+
+        Object.assign(obj, {
+            name: nameEmployee,
+            JobTitlesId: idJobTitleEmployee,
+            CompanyId: id,
+            salary: Number(salaryEmployee.replace('R$', '').replace('.', '').replace(',','.')).toFixed(2)
+        });
+
+        console.log('obj', obj);
+        
+        const response = await api.post('/Employees', obj);
+
+        if (response.data.success) {
+            alert('Funcionário cadastrado com sucesso');
+
+            const responseCompanies = await api.get(`/Companies/${id}`);
+
+            if (responseCompanies.data.success) {
+                console.log('vai preencher')
+                const {data: obj} = responseCompanies.data;
+                setName(obj.name);
+                setStreet(obj.street);
+                setNumber(obj.number);
+                setNeighborhood(obj.neighborhood);
+                setZipcode(obj.zipcode);
+                setState(obj.state);
+                setCity(obj.city);
+                setTelephone(obj.telephone);
+                setComplement(obj.complement);
+                setEmployees(obj.employees);
+                console.log('preencheu')
+            }
+
+            clearEmployee();
+            setOpenDialogCreateEmployee(false);
+        }
+    }
+
     async function getAddressCep() {
-        console.log('buscando endereço')
         const response = await api.get(`/Zipcode/${zipcode}`);
-        console.log(response)
         if (response.data) {
             setStreet(response.data.logradouro);
             setNeighborhood(response.data.bairro);
@@ -297,26 +457,53 @@ function Company() {
                                 <span style={{fontSize: 25, margin: 5}}><strong>Cidade:</strong>{city}</span>
                                 <span style={{fontSize: 25, margin: 5}}><strong>Estado:</strong>{state}</span>
 
-                                {employees.length && (
+                                <div style={{
+                                    display: 'flex',
+                                }}>
+                                    <h2>Funcionários</h2>
+
+                                    <IconButton
+                                        onClick={() => setOpenDialogCreateEmployee(true)}
+                                    >
+                                        <AddCircle
+                                            color="success"
+                                        />
+                                    </IconButton>
+                                </div>
+
+                                {employees.length ? (
                                     <div>
+
+
                                         <Table>
                                             <TableHead>
                                                 <TableCell style={styles.tableHead}>Identificador</TableCell>
                                                 <TableCell style={styles.tableHead}>Nome</TableCell>
+                                                <TableCell style={styles.tableHead}>Cargo</TableCell>
                                                 <TableCell style={styles.tableHead}>Salário</TableCell>
+                                                <Table style={styles.tableHead}>Detalhes</Table>
                                             </TableHead>
                                             <TableBody>
                                                 {employees.map(emp => (
                                                     <TableRow>
                                                         <TableCell>{emp.id}</TableCell>
                                                         <TableCell>{emp.name}</TableCell>
-                                                        <TableCell>{emp.salary}</TableCell>
+                                                        <TableCell>{emp.jobTitles.name}</TableCell>
+                                                        <TableCell>{`R$ ${Number(emp.salary).toFixed(2).toString().replace('.',',')}`}</TableCell>
+                                                        <TableCell>
+                                                            <IconButton>
+                                                                <Visibility />
+                                                            </IconButton>
+                                                            <IconButton>
+                                                                <Delete />
+                                                            </IconButton>
+                                                        </TableCell>
                                                     </TableRow>
                                                 ))}
                                             </TableBody>
                                         </Table>
                                     </div>
-                                )}
+                                ) : <h4>Empresa não possui funcionários cadastrados</h4>}
                             </div>
                         ) : (
                             <div>
@@ -446,12 +633,8 @@ function Company() {
                                         float: 'right',
                                         marginRight: 250
                                     }}
-                                    onClick={() => createCompany()}
+                                    onClick={() => updateCompany()}
                                 >Atualizar</Button>
-
-
-
-
 
                             </div>
                         )
@@ -591,6 +774,66 @@ function Company() {
 
                 </div>
 
+            </Dialog>
+
+            <Dialog open={openDialogCreateEmployee} onClose={() => setOpenDialogCreateEmployee(false)}>
+                <div style={{
+                    margin: 10
+                }}>
+                    <h1>Criar Funcionário</h1>
+
+                    <div>
+                        <TextField
+                            required
+                            id="outlined-required"
+                            label="Nome"
+                            value={nameEmployee ? nameEmployee : ''}
+                            style={styles.textFieldCompany}
+                            onChange={e => setNameEmployee(e.target.value)}
+                        />
+
+                        <NumericFormat
+                            required
+                            prefix={'R$'}
+                            customInput={TextField}
+                            style={styles.textFieldCompany}
+                            label="Salário"
+                            value={salaryEmployee ? salaryEmployee : ''}
+                            decimalSeparator=","
+                            decimalScale={2}
+                            allowedDecimalSeparators={','}
+                            thousandSeparator='.'
+                            thousandsGroupStyle="thousand"
+                            //onValueChange={v => setSalaryEmployee(v.value)}
+                            onChange={e => setSalaryEmployee(e.target.value)}
+                        />
+
+                        <Autocomplete
+                            options={jobTitles}
+                            value={jobTitleEmployee}
+
+                            style={styles.textFieldCompany}
+                            onChange={(e, newValue) => {
+                                setIdJobTitleEmployee(newValue.id)
+                                setJobTitleEmployee(newValue);
+                            }}
+                            renderInput={(params) => <TextField {...params} label="Cargo" />}
+                        />
+                    </div>
+
+                    <Button
+                        style={{
+                            background: '#06b2f7',
+                            height: 50,
+                            width: 200,
+                            color: '#fff',
+                            margin: 15,
+                            float: 'right',
+                            marginRight: 250
+                        }}
+                        onClick={() => createEmployee()}
+                    >Criar</Button>
+                </div>
             </Dialog>
         </Container >
     )
