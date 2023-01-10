@@ -7,21 +7,11 @@ import {
   createBrowserRouter
 } from 'react-router-dom';
 import Home from './screens/Home';
-import Company from './screens/Company';
-import Employee from './screens/Employee';
 
 const router = createBrowserRouter([
   {
     path: '/',
     element: <Home />,
-  },
-  {
-    path: '/empresas',
-    element: <Company />
-  },
-  {
-    path: '/funcionarios',
-    element: <Employee />
   }
 ]);
 
